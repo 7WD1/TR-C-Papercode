@@ -77,6 +77,7 @@ The actor does not select independent final fleet actions. Its proposal can cont
 | `training.py` | Prediction pretraining, MIQP-teacher behavior cloning, one-step relaxed decision regret and explanation/feasibility losses |
 | `training.py` | Terminal-aware GAE, clipped PPO surrogate, value loss and entropy; domain-randomized auxiliary and PPO cycles |
 | `explanations.py` | Intrinsic contributions, exhaustive local score Shapley audit, optimized per-instance edge masks, learned parametric edge gates and finite-grid counterfactual search |
+| `metrics.py` | Measured projected-cost fidelity, shared-reference counterfactual minimality, explicit scenario/seed/decision aggregation and validity coverage |
 
 The optimized masks and parametric gates are GNNExplainer-style and PGExplainer-style reconstruction modules. They are not reproductions of the paper's comparative explanation benchmark. The exhaustive 128-coalition Shapley calculation audits a **fixed candidate score** while holding concept weights and residual fixed. It is not equated with projected-action attribution. The counterfactual searches a declared finite admissible grid with matched ordered candidate identities and reports the minimum within that constant-support grid; it does not claim a global continuous optimum. Grid points with a different ordered support are skipped before binary or charging-energy vectors are compared. Service identities use stable request IDs. The default target context is the baseline support; `target_support` specifies the ordered support used to construct an alternative target. The JSON reports the identity policy and number of skipped points.
 
@@ -143,18 +144,68 @@ All executable settings live in [configs/demo.json](configs/demo.json). The defa
 
 These assumptions replace unavailable city instances, calibration inputs and original training artifacts. The simulator checks prediction-based modeled constraints separately from physical evolution. A zero modeled certificate is not a claim about unmodeled real-world energy or latency. The six-update smoke history checks execution and finite gradients; it is not a convergence experiment or a 200-epoch training run.
 
+## Explanation metric aggregation
+
+The offline functions in [xgdop/metrics.py](xgdop/metrics.py) implement the specified calculation protocol for **supplied measurements**. They do not reconstruct the paper's `0.78` fidelity or `0.19` minimality, generate city deletion costs, or replace the original experiment logs. The smoke demo remains a method execution check and does not call these comparative aggregators.
+
+For fidelity, each record refers to the selected single atomic candidate on the declared complete candidate support. Intrinsic elements are its seven `weight * concept` contributions. For graph or feature audits, the elements are the declared candidate-local edge or feature attributions. Rank all eligible elements by absolute contribution, select the top three, and measure the joint operating-cost change after each declared local deletion and full decoder/projection rerun. Intrinsic deletion removes the chosen candidate's single contribution while holding its weights and residual fixed; subtracting a score term is not the projected-cost measurement. The cost is the complete fleet action's operating cost.
+
+The factual and deletion-cost arrays for this comparison use the same fixed **full final-round-Q offline support**. They are an offline explanation audit. Online latency belongs to the deployed hierarchical decision path and is measured separately. This array interface neither generates those audit runs nor calculates the manuscript's original latency or benchmark values.
+
+For decision `i`, with all declared elements `E_i`, the aggregator computes:
+
+```text
+delta[i,e] = abs(projected_cost_after_deleting_element_e - baseline_projected_cost)
+fidelity[i] = mean(delta[i,e] for top3 absolute-contribution elements)
+              / (max(delta[i,e] over ALL E_i) + 1e-6)
+```
+
+Element rows may have different lengths. Their costs and contributions must share the same ordering. Equal contributions use the lower element index as a deterministic tie break. The comparison budget is three: a record with fewer than three eligible elements is not assigned a fake zero; the function rejects it, and the audit must report its eligibility separately. Zero cost changes with an eligible element set produce zero fidelity. An explicitly different `top_k` is a diagnostic setting, rather than the fixed-budget comparison protocol.
+
+For comparative counterfactual minimality, compute standardized L1 distances using the declared training-set feature scales. In **each scenario**, calculate one `d_max` across all valid counterfactual attempts from **every compared method and every seed**. Pass the same `reference_maxima` mapping to each method's `counterfactual_minimality` call. The keyword is mandatory. Each valid distance is divided by this shared scenario maximum plus `1e-6`. The function checks coverage and rejects a reference smaller than an observed valid distance. Validity still requires the target-action tolerance, feasibility and candidate-identity checks in the measurement generator.
+
+Within one scenario, that common scale preserves standardized L1 distance ordering. The cross-scenario macro summarizes normalized distances; it is not a raw-L1 mean.
+
+Both metrics use three explicit levels: average decisions within each scenario-seed run, average eligible seed-run values within that scenario, then average eligible scenarios equally. Pass `scenario_ids` and `seed_ids` separately. Thirty scenarios and ten seeds describe **300 runs**, each of which can contain multiple decision times; they do not imply 300 individual decisions. Unequal run lengths never weight one seed more heavily. Invalid counterfactuals are excluded from the conditional minimality value. A run with no valid counterfactual has `mean=None` (NR); a scenario with no eligible run is also NR. These missing conditional values are never filled with zero. Returned run/scenario counts expose the exclusions.
+
+`validity_overall` instead averages the valid fraction over **all attempted decisions within a run, all observed runs, and all observed scenarios**, including zero-valid runs/scenarios. Report validity and coverage alongside conditional minimality. An entirely unattempted run has no observations and cannot be inferred by the library; report it explicitly in the experiment metadata.
+
+```python
+from xgdop.metrics import projected_cost_fidelity, counterfactual_minimality
+
+# Artificial arrays illustrate the interface; these are not paper measurements.
+scenario_ids = ["A", "A", "B"]
+seed_ids = [0, 1, 0]
+fid = projected_cost_fidelity(
+    baseline_costs=[10, 10, 10],
+    deleted_costs=[[11, 12, 13, 20], [12, 12, 12, 15], [11, 11, 11, 12]],
+    contributions=[[3, -2, 1, 0], [3, 2, 1, 0], [-3, 2, 1, 0]],
+    scenario_ids=scenario_ids, seed_ids=seed_ids,
+)
+# In an actual comparison, derive these maxima from ALL methods' valid records.
+shared_maxima = {"A": 4, "B": 6}
+cm = counterfactual_minimality(
+    distances=[1, 2, 3], valid=[True, True, True],
+    scenario_ids=scenario_ids, seed_ids=seed_ids, reference_maxima=shared_maxima,
+)
+print(fid.overall, cm.overall, cm.validity_overall)
+print(cm.runs, cm.scenarios)
+```
+
+`relative_counterfactual_minimality` is a separately named, single-input diagnostic that uses its own scenario maximum. Its output is marked `within_input_group`; multiplying all distances in that scenario by the same factor leaves it almost unchanged. It is not the comparative minimality protocol and cannot establish absolute differences between methods. `run_scenario_macro_mean` exposes the three-level aggregation for other measured values; `scenario_macro_mean` remains a generic two-level helper.
+
 ## Validation
 
 The focused suite checks mixed-integer feasibility against an independently evaluated constraint certificate, explicit request coverage and exclusivity, reported fallback slacks, a finite-difference QP gradient, noncrossing quantiles and relation-specific graph gradients, terminal GAE, PPO likelihood ratios and minimization sign, full RL disablement, exhaustive local score Shapley values, nested candidate feasibility, and counterfactual rejection of equal-length vectors with different candidate identities.
 
-The local Windows CPU run passed **12 tests**. The full smoke and no-RL smoke each executed four decisions with maximum modeled constraint violation `0.0`; the deliberately impossible net target activated the reported fallback. These are software checks on the small synthetic fixture. GitHub Actions repeats tests and smoke execution on Linux and uploads the generated artifacts.
+The suite also checks the metric protocol against hand-calculated arrays: all-element fidelity denominators, stable top-three selection, varying element-set sizes, shared CF references, unequal decision counts per seed, scenario macro averaging, invalid exclusions, NR runs/scenarios and validity coverage. The current suite contains **39 checks** (12 method tests and 27 metric checks). The full smoke and no-RL smoke each executed four decisions with maximum modeled constraint violation `0.0`; the deliberately impossible net target activated the reported fallback. These are software checks on the small synthetic fixture. GitHub Actions repeats tests and smoke execution on Linux and uploads the generated artifacts.
 
 ## Repository map
 
 ```text
 configs/       explicit synthetic settings and paper encoder architecture
-xgdop/         environment, actor–critic, projection, training and explanations
-tests/         focused feasibility/gradient/PPO checks
+xgdop/         environment, actor–critic, projection, training, explanations and metrics
+tests/         focused feasibility/gradient/PPO and metric-aggregation checks
 assets/        vector banner and actual smoke-run plots
 outputs/       local JSON reports, checkpoint and plots (ignored by Git)
 ```
