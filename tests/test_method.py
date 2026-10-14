@@ -189,3 +189,51 @@ def test_empty_request_set_remains_runnable(setup):
     result,executed = problem.project(proposal.detach().numpy())
     assert not result.fallback
     assert result.certificate["maximum_modeled_constraint_violation"]<2e-6
+
+
+def test_counterfactual_rejects_equal_length_different_candidate_identities(setup):
+    cfg,state,_,output,_ = setup
+    from xgdop.explanations import counterfactual_grid
+    def service(v,r):
+        return next(a for a in output["actions"] if a.kind=="serv" and a.vehicle==v and a.target==r)
+    def idle(v):
+        return next(a for a in output["actions"] if a.kind=="idle" and a.vehicle==v)
+    baseline = [service(0,0),service(1,1),idle(0),idle(1)]
+    changed = [service(0,1),service(1,0),idle(0),idle(1)]
+
+    class ScreenedModel:
+        def __init__(self):
+            self.cfg = cfg
+        def __call__(self,candidate):
+            support = changed if candidate.price[0]>state.price[0] else baseline
+            return {"actions":support,"time":torch.tensor([1.,1.,0.,0.]),
+                    "energy":torch.tensor([.1,.1,0.,0.])}
+        def decode(self,result,problem):
+            proposal = torch.zeros(problem.dimension)
+            proposal[:2] = 1
+            proposal[problem.reject_start+2:] = 1
+            return proposal
+
+    model = ScreenedModel()
+    changed_state = state.clone()
+    changed_state.price[0] += .1
+    def project(candidate):
+        candidate_output = model(candidate)
+        problem = FleetProblem(candidate,candidate_output,cfg)
+        result,executed = problem.project(model.decode(candidate_output,problem).numpy())
+        return result,executed
+    original_result,original_problem = project(state)
+    changed_result,changed_problem = project(changed_state)
+    target = np.rint(original_result.decision[original_problem.binary_indices]).astype(int)
+    alternative = np.rint(changed_result.decision[changed_problem.binary_indices]).astype(int)
+    # Both vectors are genuinely feasible and numerically equal, but the request
+    # assigned to each vehicle is different. A length/raw-vector check fails.
+    assert np.array_equal(target,alternative)
+    assert baseline[0].target!=changed[0].target
+    assert original_result.certificate["maximum_modeled_constraint_violation"]<2e-6
+    assert changed_result.certificate["maximum_modeled_constraint_violation"]<2e-6
+    result = counterfactual_grid(model,state,target,fields=[("price",changed_state.price)],
+                                 target_support=baseline)
+    assert not result["valid"]
+    assert result["candidate_identity_policy"]=="matched_ordered_support"
+    assert result["skipped_support_mismatches"]==1

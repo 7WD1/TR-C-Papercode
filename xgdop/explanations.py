@@ -125,19 +125,31 @@ def edge_mask_audit(model,state,iterations=12):
             p.requires_grad_(flag)
 
 
-def counterfactual_grid(model,state,target_binary,fields=None,charge_target=None,charge_tolerance=0.1):
+def counterfactual_grid(model,state,target_binary,fields=None,charge_target=None,charge_tolerance=0.1,
+                        target_support=None):
     """Exact minimum among an explicit finite admissible intervention grid.
 
     Default operator-controllable field: prescribed zone net-rebalancing target.
     Identity/topology are fixed. This routine does not claim a continuous global
-    counterfactual optimum. The grid, standardizing scales and feasibility status
-    are returned so the result can be audited.
+    counterfactual optimum. Binary and energy coordinates are compared only when
+    ordered candidate identities match the target context. By default that
+    context is the baseline state's support; callers can pass the support used
+    to construct a different target. The entity identities remain fixed.
     """
     cfg = model.cfg
     if fields is None:
         fields = [("net",np.zeros(len(state.zone_xy)))]
     best = None
+    skipped_support_mismatches = 0
+
+    def identity(actions):
+        return tuple((a.kind,a.vehicle,int(state.request_ids[a.target]) if a.kind=="serv" else a.target)
+                     for a in actions)
+
     with torch.no_grad():
+        if target_support is None:
+            target_support = model(state)["actions"]
+        target_identity = identity(target_support)
         for name,value in fields:
             if name not in ("net","price","power"):
                 raise ValueError("Only declared operator-controllable fields are admissible.")
@@ -151,6 +163,12 @@ def counterfactual_grid(model,state,target_binary,fields=None,charge_target=None
             from .environment import graph_frame
             candidate.history[-1] = graph_frame(candidate,cfg)
             output = model(candidate)
+            # Equal vector lengths do not imply equal action coordinates. A
+            # changed screen can swap request/vehicle assignments while leaving
+            # the binary vector numerically identical, so skip that grid point.
+            if identity(output["actions"])!=target_identity:
+                skipped_support_mismatches += 1
+                continue
             problem = FleetProblem(candidate,output,cfg)
             proposal = model.decode(output,problem).numpy()
             result,executed = problem.project(proposal)
@@ -166,4 +184,7 @@ def counterfactual_grid(model,state,target_binary,fields=None,charge_target=None
             if best is None or distance<best["standardized_l1"]:
                 best = {"field":name,"value":value.tolist(),"standardized_l1":distance,
                         "scale":scale,"fallback":result.fallback,"valid":True}
-    return best or {"valid":False,"reason":"No valid counterfactual in the declared finite grid."}
+    result = best or {"valid":False,"reason":"No valid counterfactual in the declared constant-support finite grid."}
+    result["candidate_identity_policy"] = "matched_ordered_support"
+    result["skipped_support_mismatches"] = skipped_support_mismatches
+    return result

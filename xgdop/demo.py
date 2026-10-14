@@ -76,7 +76,8 @@ def main():
     target = np.rint(alternative_result.decision[alternative_problem.binary_indices]).astype(int)
     counterfactual = counterfactual_grid(model,first_state,target,
                         fields=[("net",first_state.net.copy()),("net",alternative.net.copy()),("net",-alternative.net.copy())],
-                        charge_target=alternative_result.decision[list(alternative_problem.charge_index.values())])
+                        charge_target=alternative_result.decision[list(alternative_problem.charge_index.values())],
+                        target_support=alternative_problem.actions)
     # Separate intentionally inconsistent net target demonstrates reported fallback.
     bad = first_state.clone()
     bad.net[0] = 1  # Sum of net flow must be zero; this target is impossible.

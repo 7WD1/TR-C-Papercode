@@ -78,7 +78,7 @@ The actor does not select independent final fleet actions. Its proposal can cont
 | `training.py` | Terminal-aware GAE, clipped PPO surrogate, value loss and entropy; domain-randomized auxiliary and PPO cycles |
 | `explanations.py` | Intrinsic contributions, exhaustive local score Shapley audit, optimized per-instance edge masks, learned parametric edge gates and finite-grid counterfactual search |
 
-The optimized masks and parametric gates are GNNExplainer-style and PGExplainer-style reconstruction modules. They are not reproductions of the paper's comparative explanation benchmark. The exhaustive 128-coalition Shapley calculation audits a **fixed candidate score** while holding concept weights and residual fixed. It is not equated with projected-action attribution. The counterfactual searches a declared finite admissible grid and reports the minimum within that grid; it does not claim a global continuous optimum.
+The optimized masks and parametric gates are GNNExplainer-style and PGExplainer-style reconstruction modules. They are not reproductions of the paper's comparative explanation benchmark. The exhaustive 128-coalition Shapley calculation audits a **fixed candidate score** while holding concept weights and residual fixed. It is not equated with projected-action attribution. The counterfactual searches a declared finite admissible grid with matched ordered candidate identities and reports the minimum within that constant-support grid; it does not claim a global continuous optimum. Grid points with a different ordered support are skipped before binary or charging-energy vectors are compared. Service identities use stable request IDs. The default target context is the baseline support; `target_support` specifies the ordered support used to construct an alternative target. The JSON reports the identity policy and number of skipped points.
 
 <p align="center"><img src="assets/concept_contributions.png" alt="Actual seven-concept additive score from the smoke run" width="680"></p>
 
@@ -145,9 +145,9 @@ These assumptions replace unavailable city instances, calibration inputs and ori
 
 ## Validation
 
-The focused suite checks mixed-integer feasibility against an independently evaluated constraint certificate, explicit request coverage and exclusivity, reported fallback slacks, a finite-difference QP gradient, noncrossing quantiles and relation-specific graph gradients, terminal GAE, PPO likelihood ratios and minimization sign, full RL disablement, exhaustive local score Shapley values, and nested candidate feasibility.
+The focused suite checks mixed-integer feasibility against an independently evaluated constraint certificate, explicit request coverage and exclusivity, reported fallback slacks, a finite-difference QP gradient, noncrossing quantiles and relation-specific graph gradients, terminal GAE, PPO likelihood ratios and minimization sign, full RL disablement, exhaustive local score Shapley values, nested candidate feasibility, and counterfactual rejection of equal-length vectors with different candidate identities.
 
-The local Windows CPU run passed **11 tests**. The full smoke and no-RL smoke each executed four decisions with maximum modeled constraint violation `0.0`; the deliberately impossible net target activated the reported fallback. These are software checks on the small synthetic fixture. GitHub Actions repeats tests and smoke execution on Linux and uploads the generated artifacts.
+The local Windows CPU run passed **12 tests**. The full smoke and no-RL smoke each executed four decisions with maximum modeled constraint violation `0.0`; the deliberately impossible net target activated the reported fallback. These are software checks on the small synthetic fixture. GitHub Actions repeats tests and smoke execution on Linux and uploads the generated artifacts.
 
 ## Repository map
 
