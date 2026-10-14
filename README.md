@@ -35,7 +35,7 @@ The default command runs all four training stages, two PPO epochs, four determin
 | `python -m xgdop.demo --config configs/paper_architecture.json` | Paper encoder width/head count on the same synthetic fixture |
 | `python -m pytest -q` | Feasibility, gradient and PPO accounting checks |
 
-Each run writes `outputs/smoke/report.json`, `training.csv`, `checkpoint.pt`, `fleet_snapshot.png` and `concept_contributions.png`. The output directory can be set with `--output`. The report includes every affine constraint residual, solver status, optimality gap, fallback slacks, sampled-likelihood diagnostics, configuration and library versions. Outputs are excluded from Git; the two README previews below are copied from an actual smoke run.
+Each run writes `outputs/smoke/report.json`, `training.csv`, `checkpoint.pt`, `fleet_snapshot.png` and `concept_contributions.png`. The output directory can be set with `--output`. For every executed control step, the report stores the complete decision vector and coordinate identities, selected assignments, idle vehicles, rejection bits, grid-side energy by charging arc, vehicle SOC before/predicted after/physically simulated after, and committed plus newly selected station usage. It also includes every affine constraint residual, solver status, optimality gap, fallback slacks, sampled-likelihood diagnostics, configuration and library versions. Outputs are excluded from Git; the two README previews below are copied from an actual smoke run.
 
 <p align="center"><img src="assets/fleet_snapshot.png" alt="Actual synthetic joint decision and closed-loop smoke trajectory" width="900"></p>
 

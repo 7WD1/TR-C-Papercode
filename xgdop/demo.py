@@ -55,8 +55,11 @@ def main():
             reports.append({"step":step,"solver":result.status,"gap":result.gap,"fallback":result.fallback,
                             "operating_cost":problem.operating_cost(result.full),
                             "certificate":result.certificate,"candidate_rounds":rounds,
-                            "intrinsic":intrinsic(output),"fixed_score_shap":fixed_score_shap(output)})
+                            "intrinsic":intrinsic(output),"fixed_score_shap":fixed_score_shap(output),
+                            **serialize_execution(state,result,problem)})
             state = environment.step(problem,result.decision)
+            for vehicle in reports[-1]["vehicle_soc"]:
+                vehicle["physical_after"] = float(state.soc[vehicle["vehicle"]])
     first_state,first_result,first_problem = snapshots[0]
     mask = edge_mask_audit(model,first_state,iterations=8)
     pg = ParametricEdgeExplainer(cfg["hidden_dim"]).fit(model,[first_state],epochs=3)
@@ -99,6 +102,59 @@ def main():
                       "maximum_modeled_violation":max(r["certificate"]["maximum_modeled_constraint_violation"] for r in reports),
                       "fallback_active":fallback.fallback,"rl_enabled":cfg["loss_weights"]["rl"]>0,
                       "wall_time_seconds":round(report["wall_time_seconds"],2)},indent=2))
+
+
+def serialize_execution(state,result,problem):
+    """Persist the executed action and state accounting without changing it."""
+    decision = result.decision
+    predicted_soc = state.soc.copy()
+    actions = []
+    assigned = set()
+    for i,action in enumerate(problem.actions):
+        if action.kind=="idle" or decision[i]<0.5:
+            continue
+        vehicle = action.vehicle
+        assigned.add(vehicle)
+        grid_energy = float(decision[problem.charge_index[i]]) if i in problem.charge_index else 0.0
+        predicted_soc[vehicle] -= problem.energy[i]*decision[i]/state.battery[vehicle]
+        predicted_soc[vehicle] += problem.cfg["charging_efficiency"]*grid_energy/state.battery[vehicle]
+        actions.append({"type":action.kind,"vehicle":vehicle,"target_index":action.target,
+                        "request_id":int(state.request_ids[action.target]) if action.kind=="serv" else None,
+                        "origin_zone":action.origin_zone,"destination_zone":action.destination_zone,
+                        "predicted_travel_min":float(problem.time[i]),
+                        "predicted_traction_energy_kwh":float(problem.energy[i]),
+                        "physical_traction_energy_kwh":float(action.energy_kwh),
+                        "grid_energy_kwh":grid_energy})
+    station_usage = []
+    for station in range(len(state.station_xy)):
+        ids = [i for i in problem.charge_index if problem.actions[i].target==station]
+        new_ports = float(sum(decision[i] for i in ids))
+        new_energy = float(sum(decision[problem.charge_index[i]] for i in ids))
+        total_energy = new_energy+float(state.committed_kwh[station])
+        station_usage.append({"station":station,"new_ports_used":new_ports,
+                              "committed_ports":float(state.occupied[station]),
+                              "total_ports_used":new_ports+float(state.occupied[station]),
+                              "port_capacity":int(state.ports[station]),
+                              "new_grid_energy_kwh":new_energy,
+                              "committed_grid_energy_kwh":float(state.committed_kwh[station]),
+                              "total_grid_energy_kwh":total_energy,
+                              "average_grid_power_kw":total_energy/(problem.cfg["interval_min"]/60),
+                              "power_capacity_kw":float(state.power[station])})
+    coordinates = [{"index":i,"type":action.kind,"vehicle":action.vehicle,"target_index":action.target}
+                   for i,action in enumerate(problem.actions)]
+    coordinates.extend({"index":qi,"type":"grid_energy_kwh","vehicle":problem.actions[i].vehicle,
+                        "target_index":problem.actions[i].target} for i,qi in problem.charge_index.items())
+    coordinates.extend({"index":problem.reject_start+r,"type":"rejection","request_id":int(ident)}
+                        for r,ident in enumerate(state.request_ids))
+    return {"executed_decision_vector":decision.tolist(),"decision_coordinates":coordinates,
+            "executed_actions":actions,
+            "idle_dispatchable_vehicles":[int(v) for v in np.flatnonzero(state.busy<=0) if int(v) not in assigned],
+            "request_rejections":[{"request_id":int(ident),"rejected":int(round(decision[problem.reject_start+r]))}
+                                  for r,ident in enumerate(state.request_ids)],
+            "charging_energy_by_arc":[{"vehicle":problem.actions[i].vehicle,"station":problem.actions[i].target,
+                                       "grid_energy_kwh":float(decision[qi])} for i,qi in problem.charge_index.items()],
+            "vehicle_soc":[{"vehicle":v,"before":float(state.soc[v]),"predicted_after":float(predicted_soc[v])}
+                            for v in range(len(state.soc))],"station_usage":station_usage}
 
 
 def make_plots(snapshots,reports,directory):
