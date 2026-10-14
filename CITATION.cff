@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "Please cite the accompanying XG-DOP manuscript when using this method reconstruction."
+type: software
+title: "XG-DOP: runnable EV fleet method reconstruction"
+version: 0.1.0
+url: "https://github.com/7WD1/TR-C-Papercode"
+authors:
+  - family-names: Jiang
+    given-names: Wen-Dong
+  - family-names: Xu
+    given-names: Pei
+  - family-names: Wu
+    given-names: Zijun
+  - family-names: Long
+    given-names: Jiancheng
+abstract: "Synthetic CPU reconstruction of XG-DOP with seven operational concepts, mixed-integer quadratic feasibility projection, decision-focused learning and hybrid-proposal PPO. It does not reproduce manuscript experimental results."

@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xgdop-method-reconstruction"
+version = "0.1.0"
+description = "Runnable XG-DOP EV fleet method reconstruction with MIQP projection and hybrid PPO"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.26,<3", "scipy>=1.12,<2", "torch>=2.2,<3", "osqp>=1.0,<2", "pyscipopt==6.0.0", "matplotlib>=3.8,<4"]
+
+[tool.setuptools.packages.find]
+include = ["xgdop*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

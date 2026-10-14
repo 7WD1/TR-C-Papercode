@@ -1,0 +1,96 @@
+{
+  "seed": 2026,
+  "vehicles": 6,
+  "zones": 3,
+  "stations": 2,
+  "requests_per_step": 5,
+  "interval_min": 5.0,
+  "battery_kwh": [
+    60.0,
+    80.0,
+    100.0
+  ],
+  "minimum_soc": 0.15,
+  "soc_margin": 0.05,
+  "charger_ports": 2,
+  "station_power_kw": 100.0,
+  "pair_power_kw": 50.0,
+  "charging_efficiency": 0.9,
+  "energy_kwh_per_km": 0.2,
+  "speed_km_per_min": 0.5,
+  "max_wait_min": 10.0,
+  "hidden_dim": 128,
+  "attention_heads": 4,
+  "graph_layers": 2,
+  "history": 12,
+  "prediction_horizon": 3,
+  "residual_dim": 4,
+  "geometry_quota": 12,
+  "score_quota": 6,
+  "expansion_rounds": 3,
+  "decoder_temperature": 0.5,
+  "projection_beta": 0.1,
+  "fallback_penalty": 100.0,
+  "solver_time_seconds": 4.5,
+  "fallback_time_seconds": 0.5,
+  "solver_relative_gap": 0.001,
+  "alpha": [
+    0.25,
+    0.3,
+    0.15,
+    0.15,
+    0.05,
+    0.05,
+    0.05
+  ],
+  "normalization_max": [
+    10.0,
+    1.0,
+    10.0,
+    10.0,
+    10000.0,
+    0.01,
+    1.0
+  ],
+  "loss_weights": {
+    "prediction": 1.0,
+    "regret": 2.0,
+    "imitation": 0.5,
+    "concept": 0.8,
+    "sparse": 0.05,
+    "stable": 0.1,
+    "faith": 0.3,
+    "violation": 5.0,
+    "rl": 1.0
+  },
+  "faith_margin": 0.02,
+  "stability_radius": 0.05,
+  "gamma": 0.99,
+  "gae_lambda": 0.95,
+  "ppo_clip": 0.2,
+  "value_weight": 0.5,
+  "entropy_weight": 0.01,
+  "beta_concentration": 2.0,
+  "learning_rate": 0.0003,
+  "smoke_stage_steps": 1,
+  "rollout_steps": 4,
+  "ppo_epochs": 2,
+  "domain_randomization": {
+    "demand_scale": [
+      0.7,
+      1.3
+    ],
+    "travel_scale": [
+      0.8,
+      1.2
+    ],
+    "energy_scale": [
+      0.85,
+      1.15
+    ],
+    "station_failure_probability": [
+      0.0,
+      0.2
+    ]
+  }
+}

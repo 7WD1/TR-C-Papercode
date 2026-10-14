@@ -1,0 +1,7 @@
+numpy>=1.26,<3
+scipy>=1.12,<2
+torch>=2.2,<3
+osqp>=1.0,<2
+pyscipopt==6.0.0
+matplotlib>=3.8,<4
+pytest>=8,<10

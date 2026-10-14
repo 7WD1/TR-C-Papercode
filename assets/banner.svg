@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="310" viewBox="0 0 1200 310">
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#10213b"/><stop offset="1" stop-color="#263968"/></linearGradient><linearGradient id="line"><stop stop-color="#6e8aff"/><stop offset="1" stop-color="#27d3ae"/></linearGradient></defs>
+<rect width="1200" height="310" rx="22" fill="url(#bg)"/>
+<g stroke="#53688e" stroke-width="1" opacity=".4"><path d="M770 30v250M890 30v250M1010 30v250M1130 30v250M710 70h450M710 150h450M710 230h450"/></g>
+<g fill="none" stroke="url(#line)" stroke-width="5"><path d="M760 230L890 150L1010 230L1130 70"/><path d="M770 70L890 150L1010 70L1130 230"/></g>
+<g fill="#f2f6ff" stroke="#6888f5" stroke-width="5"><circle cx="770" cy="70" r="13"/><circle cx="760" cy="230" r="13"/><circle cx="890" cy="150" r="17"/><circle cx="1010" cy="70" r="13"/><circle cx="1010" cy="230" r="13"/></g>
+<g fill="#2bdbb4"><rect x="1111" y="51" width="38" height="38" rx="8"/><rect x="1111" y="211" width="38" height="38" rx="8"/></g>
+<g fill="#132741"><path d="M1131 57l-12 17h9l-2 11 14-18h-10z"/><path d="M1131 217l-12 17h9l-2 11 14-18h-10z"/></g>
+<text x="62" y="104" fill="#93a8df" font-family="Arial,sans-serif" font-size="17" letter-spacing="4">EXPLAINABLE EV FLEET CONTROL</text>
+<text x="57" y="184" fill="#ffffff" font-family="Arial,sans-serif" font-size="74" font-weight="700">XG-DOP</text>
+<text x="62" y="235" fill="#ccd8f0" font-family="Arial,sans-serif" font-size="21">Concepts → proposed actions → feasible joint decisions</text>
+<text x="62" y="272" fill="#61d8bc" font-family="Arial,sans-serif" font-size="15">RUNNABLE METHOD RECONSTRUCTION · CPU SMOKE TEST</text>
+</svg>
